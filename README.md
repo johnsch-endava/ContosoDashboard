@@ -53,7 +53,7 @@ This application includes a **mock authentication system** designed for training
 
 ## Overview
 
-ContosoDashboard is built using ASP.NET Core 8.0 with Blazor Server and provides a centralized platform for:
+ContosoDashboard is built using ASP.NET Core 10.0 with Blazor Server and provides a centralized platform for:
 
 - Task management and tracking
 - Project oversight and collaboration
@@ -81,10 +81,10 @@ ContosoDashboard is built using ASP.NET Core 8.0 with Blazor Server and provides
 
 ### 🔧 Technical Stack
 
-- **Framework**: ASP.NET Core 8.0
+- **Framework**: ASP.NET Core 10.0
 - **UI**: Blazor Server
-- **Database**: SQL Server LocalDB with Entity Framework Core
-- **Authentication**: Cookie-based mock authentication for training (Azure AD/Microsoft Entra ID ready)
+- **Database**: SQLite for local development, SQL Server for optional non-development deployments
+- **Authentication**: Cookie-based mock authentication for training
 - **Authorization**: Claims-based identity with role-based access control
 - **Styling**: Bootstrap 5.3 with Bootstrap Icons
 - **Architecture**: Clean separation of concerns with Models, Services, Data, and Pages layers
@@ -97,12 +97,12 @@ ContosoDashboard is built using ASP.NET Core 8.0 with Blazor Server and provides
 This training application follows an **offline-first architecture** with abstraction layers that enable seamless migration to Azure services:
 
 **Current Implementation (Training/Offline):**
-- **Database**: SQL Server LocalDB (offline development database)
+- **Database**: SQLite file database (`ContosoDashboard.db`) for offline local development
 - **File Storage**: Local filesystem for any file-based features
 - **Authentication**: Cookie-based mock authentication
 
 **Production Migration Path:**
-- **Database**: Azure SQL Database (replace connection string, no code changes)
+- **Database**: SQL Server or Azure SQL Database (set `ConnectionStrings:SqlServerConnection` outside development)
 - **File Storage**: Azure Blob Storage (swap `IFileStorageService` implementation)
 - **Authentication**: Microsoft Entra ID (replace authentication middleware)
 
@@ -137,8 +137,7 @@ public interface IFileStorageService
 
 ### Prerequisites
 
-- .NET 8.0 SDK or later
-- SQL Server LocalDB
+- .NET 10.0 SDK or later
 - Visual Studio 2022 or Visual Studio Code
 
 ### Quick Start
@@ -149,7 +148,7 @@ public interface IFileStorageService
    cd ContosoDashboard
    ```
 
-2. **Run the application** (database will be created automatically):
+2. **Run the application** (the SQLite database will be created automatically):
 
    ```powershell
    dotnet run
@@ -159,7 +158,11 @@ public interface IFileStorageService
 
 4. **Login** - Select any user from the dropdown (no password required)
 
-The application automatically creates and seeds the database on first run with sample users, projects, tasks, and announcements.
+The application automatically creates and seeds `ContosoDashboard.db` on first run with sample users, projects, tasks, and announcements.
+
+The SQLite database file is created in the application directory: `ContosoDashboard/ContosoDashboard/ContosoDashboard.db`. Delete that file to reset the local dataset.
+
+When running under WSL or other Linux remote environments, `dotnet run` uses the HTTP launch profile by default to avoid browser trust warnings for the ASP.NET Core development certificate. HTTPS remains available through the separate `https` launch profile.
 
 ### Testing Security Features
 
@@ -236,15 +239,15 @@ ContosoDashboard/
 
 ### Database Connection
 
-The default connection string in `appsettings.json` uses SQL Server LocalDB:
+For local development, the default connection string in `appsettings.json` uses SQLite:
 
 ```json
 "ConnectionStrings": {
-  "DefaultConnection": "Server=(localdb)\\mssqllocaldb;Database=ContosoDashboard;Trusted_Connection=True;MultipleActiveResultSets=true"
+   "DefaultConnection": "Data Source=ContosoDashboard.db"
 }
 ```
 
-Update this if using a different SQL Server instance.
+For non-development environments, set `ConnectionStrings:SqlServerConnection` to a SQL Server or Azure SQL connection string. The application uses SQLite in development and switches to SQL Server only when `SqlServerConnection` is provided outside development.
 
 ### Production Authentication Guidance
 

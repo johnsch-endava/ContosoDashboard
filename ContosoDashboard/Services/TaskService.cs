@@ -67,7 +67,7 @@ public class TaskService : ITaskService
             .Include(t => t.AssignedUser)
             .Include(t => t.CreatedByUser)
             .Include(t => t.Project)
-            .ThenInclude(p => p.ProjectMembers)
+            .ThenInclude(p => p!.ProjectMembers)
             .Include(t => t.Comments)
             .ThenInclude(c => c.User)
             .FirstOrDefaultAsync(t => t.TaskId == taskId);
@@ -77,8 +77,8 @@ public class TaskService : ITaskService
         // Authorization: User can only view tasks they are assigned to, created, or are part of the project
         var isAssignedUser = task.AssignedUserId == requestingUserId;
         var isCreator = task.CreatedByUserId == requestingUserId;
-        var isProjectMember = task.Project?.ProjectMembers.Any(pm => pm.UserId == requestingUserId) ?? false;
-        var isProjectManager = task.Project?.ProjectManagerId == requestingUserId;
+        var isProjectMember = IsProjectMember(task.Project, requestingUserId);
+        var isProjectManager = IsProjectManager(task.Project, requestingUserId);
 
         if (!isAssignedUser && !isCreator && !isProjectMember && !isProjectManager)
         {
@@ -113,7 +113,7 @@ public class TaskService : ITaskService
     {
         var task = await _context.Tasks
             .Include(t => t.Project)
-            .ThenInclude(p => p.ProjectMembers)
+            .ThenInclude(p => p!.ProjectMembers)
             .FirstOrDefaultAsync(t => t.TaskId == taskId);
             
         if (task == null) return false;
@@ -121,8 +121,8 @@ public class TaskService : ITaskService
         // Authorization: Only assigned user, creator, project manager, or project members can update status
         var isAssignedUser = task.AssignedUserId == requestingUserId;
         var isCreator = task.CreatedByUserId == requestingUserId;
-        var isProjectMember = task.Project?.ProjectMembers.Any(pm => pm.UserId == requestingUserId) ?? false;
-        var isProjectManager = task.Project?.ProjectManagerId == requestingUserId;
+        var isProjectMember = IsProjectMember(task.Project, requestingUserId);
+        var isProjectManager = IsProjectManager(task.Project, requestingUserId);
 
         if (!isAssignedUser && !isCreator && !isProjectMember && !isProjectManager)
         {
@@ -187,7 +187,7 @@ public class TaskService : ITaskService
     {
         var task = await _context.Tasks
             .Include(t => t.Project)
-            .ThenInclude(p => p.ProjectMembers)
+            .ThenInclude(p => p!.ProjectMembers)
             .FirstOrDefaultAsync(t => t.TaskId == taskId);
 
         if (task == null) return new List<TaskComment>();
@@ -195,8 +195,8 @@ public class TaskService : ITaskService
         // Authorization: User can only view comments if they have access to the task
         var isAssignedUser = task.AssignedUserId == requestingUserId;
         var isCreator = task.CreatedByUserId == requestingUserId;
-        var isProjectMember = task.Project?.ProjectMembers.Any(pm => pm.UserId == requestingUserId) ?? false;
-        var isProjectManager = task.Project?.ProjectManagerId == requestingUserId;
+        var isProjectMember = IsProjectMember(task.Project, requestingUserId);
+        var isProjectManager = IsProjectManager(task.Project, requestingUserId);
 
         if (!isAssignedUser && !isCreator && !isProjectMember && !isProjectManager)
         {
@@ -208,5 +208,16 @@ public class TaskService : ITaskService
             .Where(c => c.TaskId == taskId)
             .OrderBy(c => c.CreatedDate)
             .ToListAsync();
+    }
+
+    private static bool IsProjectMember(Project? project, int userId)
+    {
+        return project?.ProjectMembers is { } projectMembers
+            && projectMembers.Any(projectMember => projectMember.UserId == userId);
+    }
+
+    private static bool IsProjectManager(Project? project, int userId)
+    {
+        return project is not null && project.ProjectManagerId == userId;
     }
 }

@@ -14,8 +14,20 @@ builder.Services.AddServerSideBlazor();
 builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthenticationStateProvider>();
 
 // Configure Database
+var sqliteConnection = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? "Data Source=ContosoDashboard.db";
+var sqlServerConnection = builder.Configuration.GetConnectionString("SqlServerConnection");
+
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+{
+    if (!builder.Environment.IsDevelopment() && !string.IsNullOrWhiteSpace(sqlServerConnection))
+    {
+        options.UseSqlServer(sqlServerConnection);
+        return;
+    }
+
+    options.UseSqlite(sqliteConnection);
+});
 
 // Configure Mock Authentication (Cookie-based for training purposes)
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -97,7 +109,10 @@ app.Use(async (context, next) =>
     await next();
 });
 
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 app.UseStaticFiles();
 app.UseRouting();
 
