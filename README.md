@@ -4,6 +4,11 @@ The ContosoDashboard application is intended for TRAINING PURPOSES ONLY.
 
 The ContosoDashboard repository contains the starter code project for training that teaches Spec-Driven Development (SDD) using the GitHub Spec Kit. ContosoDashboard is a fictional application created solely for educational purposes.
 
+This repository follows the Spec Kit constitution in `.specify/memory/constitution.md`.
+Feature plans and tasks are expected to preserve the training-safe local runtime,
+service-level authorization patterns, and cross-platform setup guidance documented
+there.
+
 - The project codebase is NOT intended for use in production environments.
 - The project architecture is NOT intended as a model for production applications.
 - The project is NOT actively maintained and may contain bugs or security vulnerabilities.

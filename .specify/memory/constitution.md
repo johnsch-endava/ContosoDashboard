@@ -1,50 +1,101 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+Sync Impact Report
+Version change: template -> 1.0.0
+Modified principles:
+- Template principle 1 -> I. Spec-First Delivery
+- Template principle 2 -> II. Training-Safe Runtime Boundaries
+- Template principle 3 -> III. Security-by-Default Training Flow
+- Template principle 4 -> IV. Independently Verifiable Slices
+- Template principle 5 -> V. Cross-Platform Local Operations
+Added sections:
+- Operating Constraints
+- Delivery Workflow
+Removed sections:
+- None
+Templates requiring updates:
+- ✅ .specify/templates/plan-template.md
+- ✅ .specify/templates/spec-template.md
+- ✅ .specify/templates/tasks-template.md
+- ✅ README.md
+- ⚠ pending: .specify/templates/commands/*.md (directory not present in this repository)
+Follow-up TODOs:
+- None
+-->
+
+# ContosoDashboard Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Spec-First Delivery
+Every material change to product behavior, architecture, or operating guidance MUST
+start with Spec Kit artifacts that describe the user outcome, implementation plan,
+and execution tasks before code is treated as complete. Plans and tasks MUST point
+to concrete repository paths and MUST be updated when implementation decisions
+change. This keeps training exercises auditable and prevents silent drift between
+requirements and the delivered application.
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+### II. Training-Safe Runtime Boundaries
+The default developer experience MUST remain local, offline-capable, and safe for
+training use. New features MUST run without paid cloud dependencies, MUST keep the
+mock authentication model clearly separated from production identity guidance, and
+MUST preserve a migration seam for production infrastructure through configuration
+or abstractions rather than hard-coded cloud assumptions. Local development MUST
+continue to work with SQLite as the default datastore.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### III. Security-by-Default Training Flow
+Security controls demonstrated by the training application are non-negotiable.
+Protected pages MUST require authorization, service methods that expose or mutate
+user-scoped data MUST enforce requester checks, and security-sensitive behavior
+MUST not rely on UI-only safeguards. Training-only shortcuts are allowed only when
+they are explicit, documented, and do not present themselves as production-ready
+security.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### IV. Independently Verifiable Slices
+Each feature specification MUST be decomposed into independently testable user
+stories with measurable acceptance scenarios. Implementation work MUST preserve a
+path to validate the smallest affected slice first, whether through focused manual
+checks, targeted tests, or scoped build validation. Quickstart and operator-facing
+documentation MUST stay current enough for another contributor to reproduce the
+intended flow.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### V. Cross-Platform Local Operations
+Local setup and runtime instructions MUST account for the supported development
+environments used in training, including Windows and WSL/Linux. Configuration
+changes MUST prefer deterministic local defaults, MUST document non-obvious host
+differences such as HTTP versus HTTPS behavior, and MUST avoid introducing a
+single-platform dependency unless it is optional and clearly isolated.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+## Operating Constraints
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+ContosoDashboard is an ASP.NET Core 10 Blazor Server application intended for
+training only. The repository standard stack is Blazor Server, Entity Framework
+Core, SQLite for local development, and optional SQL Server configuration for
+non-development deployments. Changes MUST preserve the existing layered structure
+across Pages, Services, Models, and Data, and MUST update README guidance when
+tooling, SDK, database, or startup behavior changes. Production-only concerns may
+be described, but the implementation default MUST remain suitable for offline,
+single-repository training exercises.
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+## Delivery Workflow
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+Contributors MUST begin with a current constitution-aligned spec, then plan, then
+tasks before broad implementation. Reviews MUST verify that new work preserves the
+training-safe runtime boundary, enforces service-level authorization where needed,
+and leaves behind reproducible setup or validation instructions. Before merge,
+contributors MUST run at least one executable validation scoped to the touched
+surface and MUST record any intentional deviations from the constitution in the
+relevant plan or review notes.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+This constitution supersedes ad hoc local practices for the ContosoDashboard
+repository. Amendments require updating this document, adjusting any affected
+templates or runtime guidance in the same change, and recording the semantic
+version bump rationale in the sync impact report. Versioning follows semantic
+rules: MAJOR for incompatible governance changes or principle removals, MINOR for
+new principles or materially expanded obligations, and PATCH for clarifications
+that do not change contributor duties. Compliance review is required for every
+spec, plan, and implementation review; unresolved constitution violations MUST be
+explicitly justified before work proceeds.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Version**: 1.0.0 | **Ratified**: 2026-05-22 | **Last Amended**: 2026-05-22

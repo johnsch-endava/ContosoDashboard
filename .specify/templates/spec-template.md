@@ -72,8 +72,12 @@
   Fill them out with the right edge cases.
 -->
 
-- What happens when [boundary condition]?
-- How does system handle [error scenario]?
+- What happens when an unauthenticated or unauthorized user attempts the primary
+  workflow?
+- How does the feature behave in the default local training environment,
+  including offline use and the configured local datastore?
+- What host-specific behavior changes, if any, occur between Windows and
+  WSL/Linux development?
 
 ## Requirements *(mandatory)*
 
@@ -89,6 +93,10 @@
 - **FR-003**: Users MUST be able to [key interaction, e.g., "reset their password"]
 - **FR-004**: System MUST [data requirement, e.g., "persist user preferences"]
 - **FR-005**: System MUST [behavior, e.g., "log all security events"]
+- **FR-SEC**: System MUST describe authorization expectations for any user-scoped
+  read or write behavior.
+- **FR-OPS**: System MUST preserve or explicitly redefine local-development
+  behavior when startup, configuration, storage, or certificates are affected.
 
 *Example of marking unclear requirements:*
 
@@ -113,3 +121,5 @@
 - **SC-002**: [Measurable metric, e.g., "System handles 1000 concurrent users without degradation"]
 - **SC-003**: [User satisfaction metric, e.g., "90% of users successfully complete primary task on first attempt"]
 - **SC-004**: [Business metric, e.g., "Reduce support tickets related to [X] by 50%"]
+- **SC-005**: [Validation metric proving the feature can be verified independently
+  in the default local training environment]

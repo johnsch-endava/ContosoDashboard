@@ -31,7 +31,17 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+- Spec-first scope is defined: the plan references a concrete spec and all open
+  product or technical questions are called out explicitly.
+- Training-safe runtime boundaries are preserved: local/offline defaults remain
+  intact, SQLite remains the development datastore, and any production path is
+  isolated behind configuration or abstractions.
+- Security obligations are identified for the feature: protected UI surfaces,
+  service-level authorization, and training-only shortcuts are documented.
+- User stories can be validated independently with a focused executable check or
+  an explicitly documented manual validation path.
+- Cross-platform local operations are covered when startup, tooling, SDK,
+  certificates, or host-specific behavior changes.
 
 ## Project Structure
 
