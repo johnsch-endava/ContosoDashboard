@@ -1,0 +1,443 @@
+openapi: 3.0.3
+info:
+  title: ContosoDashboard Document Management API
+  version: 0.1.0
+  description: |
+    Planned authenticated endpoint contract for document upload, access, sharing,
+    and secure file streaming in the offline-first training application.
+servers:
+  - url: http://localhost:5000
+security:
+  - cookieAuth: []
+paths:
+  /api/documents:
+    get:
+      summary: List accessible documents for the current user
+      parameters:
+        - in: query
+          name: scope
+          schema:
+            type: string
+            enum: [my, shared, accessible]
+        - in: query
+          name: projectId
+          schema:
+            type: integer
+        - in: query
+          name: taskId
+          schema:
+            type: integer
+        - in: query
+          name: category
+          schema:
+            type: string
+        - in: query
+          name: search
+          schema:
+            type: string
+        - in: query
+          name: fromDate
+          schema:
+            type: string
+            format: date
+        - in: query
+          name: toDate
+          schema:
+            type: string
+            format: date
+        - in: query
+          name: sort
+          schema:
+            type: string
+            enum: [title, uploadDate, category, fileSize]
+        - in: query
+          name: direction
+          schema:
+            type: string
+            enum: [asc, desc]
+      responses:
+        '200':
+          description: Accessible documents
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentListResponse'
+    post:
+      summary: Upload one document
+      description: |
+        Multi-file UI flows call this endpoint once per file so validation,
+        progress, and failure reporting remain independent.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DocumentUploadRequest'
+      responses:
+        '201':
+          description: Document uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentResource'
+        '400':
+          description: Validation failure
+        '403':
+          description: User is not authorized to upload in the requested context
+  /api/projects/{projectId}/documents:
+    get:
+      summary: List project documents visible to the current user
+      parameters:
+        - in: path
+          name: projectId
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Project documents
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentListResponse'
+        '403':
+          description: User is not authorized for this project
+  /api/tasks/{taskId}/documents:
+    get:
+      summary: List task-related documents visible to the current user
+      parameters:
+        - in: path
+          name: taskId
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Task documents
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentListResponse'
+        '403':
+          description: User is not authorized for this task
+  /api/documents/{documentId}:
+    get:
+      summary: Get document metadata
+      parameters:
+        - in: path
+          name: documentId
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Document metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentResource'
+        '403':
+          description: User is not authorized to access this document
+        '404':
+          description: Document not found
+    patch:
+      summary: Update document metadata
+      parameters:
+        - in: path
+          name: documentId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentUpdateRequest'
+      responses:
+        '200':
+          description: Updated document metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentResource'
+        '403':
+          description: User is not authorized to edit this document
+    delete:
+      summary: Delete a document
+      parameters:
+        - in: path
+          name: documentId
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Document deleted
+        '403':
+          description: User is not authorized to delete this document
+  /api/documents/{documentId}/download:
+    get:
+      summary: Download a document file
+      parameters:
+        - in: path
+          name: documentId
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Binary file content
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '403':
+          description: User is not authorized to download this document
+  /api/documents/{documentId}/preview:
+    get:
+      summary: Preview a supported document in-browser
+      parameters:
+        - in: path
+          name: documentId
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Previewable binary stream
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+        '403':
+          description: User is not authorized to preview this document
+        '415':
+          description: File type is not previewable
+  /api/documents/{documentId}/replace:
+    post:
+      summary: Replace the current binary while preserving the document record
+      parameters:
+        - in: path
+          name: documentId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Document file replaced
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentResource'
+        '400':
+          description: Validation failure
+        '403':
+          description: User is not authorized to replace this document
+  /api/documents/{documentId}/shares:
+    post:
+      summary: Share a document with a specific user or department team
+      parameters:
+        - in: path
+          name: documentId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentShareRequest'
+      responses:
+        '201':
+          description: Document share created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentShareResource'
+        '400':
+          description: Invalid share target
+        '403':
+          description: User is not authorized to share this document
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: .AspNetCore.Cookies
+  schemas:
+    DocumentUploadRequest:
+      type: object
+      required: [file, title, category]
+      properties:
+        file:
+          type: string
+          format: binary
+        title:
+          type: string
+          maxLength: 255
+        category:
+          type: string
+          enum:
+            - Project Documents
+            - Team Resources
+            - Personal Files
+            - Reports
+            - Presentations
+            - Other
+        description:
+          type: string
+          maxLength: 2000
+        projectId:
+          type: integer
+          nullable: true
+        taskId:
+          type: integer
+          nullable: true
+        tags:
+          type: array
+          items:
+            type: string
+            maxLength: 50
+    DocumentUpdateRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 255
+        category:
+          type: string
+          enum:
+            - Project Documents
+            - Team Resources
+            - Personal Files
+            - Reports
+            - Presentations
+            - Other
+        description:
+          type: string
+          maxLength: 2000
+        tags:
+          type: array
+          items:
+            type: string
+            maxLength: 50
+    DocumentShareRequest:
+      type: object
+      properties:
+        userId:
+          type: integer
+          nullable: true
+        department:
+          type: string
+          nullable: true
+      description: Exactly one of userId or department must be supplied.
+    DocumentResource:
+      type: object
+      required:
+        - documentId
+        - title
+        - category
+        - originalFileName
+        - mimeType
+        - fileSizeBytes
+        - uploadedByUserId
+        - createdUtc
+      properties:
+        documentId:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        category:
+          type: string
+        originalFileName:
+          type: string
+        mimeType:
+          type: string
+        fileSizeBytes:
+          type: integer
+          format: int64
+        uploadedByUserId:
+          type: integer
+        uploadedByDisplayName:
+          type: string
+        projectId:
+          type: integer
+          nullable: true
+        taskId:
+          type: integer
+          nullable: true
+        tags:
+          type: array
+          items:
+            type: string
+        createdUtc:
+          type: string
+          format: date-time
+        updatedUtc:
+          type: string
+          format: date-time
+        canPreview:
+          type: boolean
+        canDownload:
+          type: boolean
+        canEdit:
+          type: boolean
+        canDelete:
+          type: boolean
+    DocumentShareResource:
+      type: object
+      properties:
+        documentShareId:
+          type: integer
+        documentId:
+          type: integer
+        sharedByUserId:
+          type: integer
+        sharedWithUserId:
+          type: integer
+          nullable: true
+        sharedWithDepartment:
+          type: string
+          nullable: true
+        accessLevel:
+          type: string
+        createdUtc:
+          type: string
+          format: date-time
+    DocumentListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocumentResource'
+        totalCount:
+          type: integer
+        appliedScope:
+          type: string
