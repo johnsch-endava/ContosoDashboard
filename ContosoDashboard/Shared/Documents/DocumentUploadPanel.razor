@@ -1,0 +1,198 @@
+@using ContosoDashboard.Models
+@using ContosoDashboard.Services
+@using Microsoft.AspNetCore.Components.Forms
+@inject IDocumentService DocumentService
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">Upload Documents</h5>
+    </div>
+    <div class="card-body">
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <label class="form-label">Category</label>
+                <select class="form-select" @bind="category">
+                    @foreach (var item in Categories)
+                    {
+                        <option value="@item">@item</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Tags</label>
+                <input class="form-control" @bind="tagsText" placeholder="comma,separated,tags" />
+            </div>
+            <div class="col-12">
+                <label class="form-label">Description</label>
+                <textarea class="form-control" rows="2" @bind="description"></textarea>
+            </div>
+            <div class="col-12">
+                <label class="form-label">Select Files</label>
+                <InputFile OnChange="HandleFilesSelected" multiple class="form-control" />
+            </div>
+        </div>
+
+        @if (pendingUploads.Any())
+        {
+            <div class="table-responsive">
+                <table class="table table-sm align-middle">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>File</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var upload in pendingUploads)
+                        {
+                            <tr>
+                                <td>
+                                    <input class="form-control" @bind="upload.Title" />
+                                </td>
+                                <td>
+                                    <strong>@upload.File.Name</strong><br />
+                                    <small class="text-muted">@FormatFileSize(upload.File.Size)</small>
+                                </td>
+                                <td>
+                                    @if (upload.Succeeded)
+                                    {
+                                        <span class="text-success">@upload.StatusMessage</span>
+                                    }
+                                    else if (!string.IsNullOrWhiteSpace(upload.StatusMessage))
+                                    {
+                                        <span class="text-danger">@upload.StatusMessage</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        <div class="d-flex justify-content-between align-items-center">
+            <small class="text-muted">Each file is validated and uploaded independently.</small>
+            <button class="btn btn-primary" @onclick="UploadFilesAsync" disabled="@(!CanUpload || isUploading)">
+                @(isUploading ? "Uploading..." : "Upload Selected Files")
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    private static readonly string[] Categories = ["Project Documents", "Team Resources", "Personal Files", "Reports", "Presentations", "Other"];
+
+    [Parameter]
+    public int CurrentUserId { get; set; }
+
+    [Parameter]
+    public string? CurrentDepartment { get; set; }
+
+    [Parameter]
+    public int? ProjectId { get; set; }
+
+    [Parameter]
+    public int? TaskId { get; set; }
+
+    [Parameter]
+    public EventCallback OnUploadCompleted { get; set; }
+
+    private readonly List<PendingDocumentUpload> pendingUploads = [];
+    private string category = Categories[0];
+    private string? description;
+    private string tagsText = string.Empty;
+    private bool isUploading;
+
+    private bool CanUpload => CurrentUserId > 0 && pendingUploads.Any(upload => !string.IsNullOrWhiteSpace(upload.Title));
+
+    private void HandleFilesSelected(InputFileChangeEventArgs args)
+    {
+        pendingUploads.Clear();
+        foreach (var file in args.GetMultipleFiles())
+        {
+            pendingUploads.Add(new PendingDocumentUpload
+            {
+                File = file,
+                Title = Path.GetFileNameWithoutExtension(file.Name)
+            });
+        }
+    }
+
+    private async Task UploadFilesAsync()
+    {
+        if (!CanUpload)
+        {
+            return;
+        }
+
+        isUploading = true;
+        try
+        {
+            foreach (var upload in pendingUploads)
+            {
+                try
+                {
+                    await using var browserStream = upload.File.OpenReadStream(26214400);
+                    using var memoryStream = new MemoryStream();
+                    await browserStream.CopyToAsync(memoryStream);
+                    memoryStream.Position = 0;
+
+                    await DocumentService.UploadDocumentAsync(new DocumentUploadRequest
+                    {
+                        Title = upload.Title,
+                        Category = category,
+                        Description = description,
+                        ProjectId = ProjectId,
+                        TaskId = TaskId,
+                        Tags = tagsText.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList(),
+                        FileName = upload.File.Name,
+                        ContentType = upload.File.ContentType,
+                        FileSizeBytes = upload.File.Size,
+                        FileContent = memoryStream
+                    }, CurrentUserId, CurrentDepartment);
+
+                    upload.Succeeded = true;
+                    upload.StatusMessage = "Uploaded successfully.";
+                }
+                catch (Exception exception)
+                {
+                    upload.Succeeded = false;
+                    upload.StatusMessage = exception.Message;
+                }
+            }
+        }
+        finally
+        {
+            isUploading = false;
+        }
+
+        await OnUploadCompleted.InvokeAsync();
+    }
+
+    private static string FormatFileSize(long fileSize)
+    {
+        if (fileSize < 1024)
+        {
+            return $"{fileSize} B";
+        }
+
+        if (fileSize < 1024 * 1024)
+        {
+            return $"{fileSize / 1024d:F1} KB";
+        }
+
+        return $"{fileSize / 1024d / 1024d:F1} MB";
+    }
+
+    private sealed class PendingDocumentUpload
+    {
+        public IBrowserFile File { get; set; } = default!;
+
+        public string Title { get; set; } = string.Empty;
+
+        public bool Succeeded { get; set; }
+
+        public string? StatusMessage { get; set; }
+    }
+}

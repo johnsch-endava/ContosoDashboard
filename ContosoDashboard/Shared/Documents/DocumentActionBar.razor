@@ -1,0 +1,54 @@
+@using ContosoDashboard.Models
+
+<div class="btn-group btn-group-sm" role="group">
+    @if (Document.CanPreview)
+    {
+        <a class="btn btn-outline-primary" href="/api/documents/@Document.DocumentId/preview" target="_blank">
+            <i class="bi bi-eye"></i>
+        </a>
+    }
+    @if (Document.CanDownload)
+    {
+        <a class="btn btn-outline-secondary" href="/api/documents/@Document.DocumentId/download">
+            <i class="bi bi-download"></i>
+        </a>
+    }
+    @if (Document.CanEdit)
+    {
+        <button class="btn btn-outline-info" @onclick="() => OnEdit.InvokeAsync(Document.DocumentId)">
+            <i class="bi bi-pencil"></i>
+        </button>
+        <button class="btn btn-outline-warning" @onclick="() => OnReplace.InvokeAsync(Document.DocumentId)">
+            <i class="bi bi-arrow-repeat"></i>
+        </button>
+    }
+    @if (Document.CanShare)
+    {
+        <button class="btn btn-outline-success" @onclick="() => OnShare.InvokeAsync(Document.DocumentId)">
+            <i class="bi bi-share"></i>
+        </button>
+    }
+    @if (Document.CanDelete)
+    {
+        <button class="btn btn-outline-danger" @onclick="() => OnDelete.InvokeAsync(Document.DocumentId)">
+            <i class="bi bi-trash"></i>
+        </button>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public DocumentListItem Document { get; set; } = null!;
+
+    [Parameter]
+    public EventCallback<int> OnEdit { get; set; }
+
+    [Parameter]
+    public EventCallback<int> OnReplace { get; set; }
+
+    [Parameter]
+    public EventCallback<int> OnShare { get; set; }
+
+    [Parameter]
+    public EventCallback<int> OnDelete { get; set; }
+}

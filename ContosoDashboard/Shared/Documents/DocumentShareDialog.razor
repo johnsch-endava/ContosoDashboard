@@ -1,0 +1,70 @@
+@using ContosoDashboard.Models
+
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Share @Document.Title</h5>
+        <button class="btn btn-sm btn-outline-secondary" @onclick="() => OnCancel.InvokeAsync()">Close</button>
+    </div>
+    <div class="card-body">
+        <div class="mb-3">
+            <label class="form-label">Share Mode</label>
+            <select class="form-select" @bind="shareMode">
+                <option value="user">Specific User</option>
+                <option value="department">Department Team</option>
+            </select>
+        </div>
+
+        @if (shareMode == "user")
+        {
+            <div class="mb-3">
+                <label class="form-label">User</label>
+                <select class="form-select" @bind="selectedUserId">
+                    <option value="">Select a user</option>
+                    @foreach (var user in Users)
+                    {
+                        <option value="@user.UserId">@user.DisplayName (@user.Department)</option>
+                    }
+                </select>
+            </div>
+        }
+        else
+        {
+            <div class="mb-3">
+                <label class="form-label">Department</label>
+                <input class="form-control" @bind="department" placeholder="Engineering" />
+            </div>
+        }
+
+        <div class="d-flex justify-content-end gap-2">
+            <button class="btn btn-secondary" @onclick="() => OnCancel.InvokeAsync()">Cancel</button>
+            <button class="btn btn-success" @onclick="ShareAsync">Share</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public DocumentListItem Document { get; set; } = null!;
+
+    [Parameter]
+    public IReadOnlyList<User> Users { get; set; } = Array.Empty<User>();
+
+    [Parameter]
+    public EventCallback<DocumentShareRequest> OnShare { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    private string shareMode = "user";
+    private int? selectedUserId;
+    private string? department;
+
+    private Task ShareAsync()
+    {
+        return OnShare.InvokeAsync(new DocumentShareRequest
+        {
+            UserId = shareMode == "user" ? selectedUserId : null,
+            Department = shareMode == "department" ? department : null
+        });
+    }
+}

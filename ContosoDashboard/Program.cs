@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using ContosoDashboard.Data;
+using ContosoDashboard.Endpoints;
 using ContosoDashboard.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -55,6 +56,15 @@ builder.Services.AddScoped<ITaskService, TaskService>();
 builder.Services.AddScoped<IProjectService, ProjectService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
+builder.Services.AddScoped<IDocumentActivityService, DocumentActivityService>();
+builder.Services.AddScoped<IDocumentService, DocumentService>();
+builder.Services.AddScoped<IFileStorageService, LocalFileStorageService>();
+builder.Services.AddScoped<IFileScreeningService, ValidationFileScreeningService>();
+builder.Services.AddScoped<IFileScanDispatchService, NoOpFileScanDispatchService>();
+
+builder.Services.Configure<DocumentStorageOptions>(builder.Configuration.GetSection("DocumentStorage"));
+builder.Services.Configure<DocumentScanningOptions>(builder.Configuration.GetSection("DocumentScanning"));
+builder.Services.Configure<DocumentScanQueueOptions>(builder.Configuration.GetSection("DocumentScanQueue"));
 
 // Add HttpContextAccessor for accessing user claims
 builder.Services.AddHttpContextAccessor();
@@ -68,7 +78,8 @@ using (var scope = app.Services.CreateScope())
     try
     {
         var context = services.GetRequiredService<ApplicationDbContext>();
-        context.Database.EnsureCreated(); // For development - use migrations in production
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        await DatabaseInitializer.InitializeAsync(context, logger, app.Lifetime.ApplicationStopping);
     }
     catch (Exception ex)
     {
@@ -120,6 +131,7 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.MapDocumentEndpoints();
 app.MapBlazorHub();
 app.MapFallbackToPage("/_Host");
 

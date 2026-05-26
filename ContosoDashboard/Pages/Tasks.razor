@@ -5,6 +5,7 @@
 @using System.Security.Claims
 @attribute [Authorize]
 @inject ITaskService TaskService
+@inject IDocumentService DocumentService
 @inject AuthenticationStateProvider AuthenticationStateProvider
 
 <PageTitle>My Tasks - ContosoDashboard</PageTitle>
@@ -126,8 +127,23 @@
                                 <button class="btn btn-sm btn-outline-primary" @onclick="() => ViewTaskDetails(task.TaskId)">
                                     <i class="bi bi-eye"></i>
                                 </button>
+                                <button class="btn btn-sm btn-outline-secondary ms-1" @onclick="() => ToggleTaskDocumentsAsync(task.TaskId)">
+                                    <i class="bi bi-file-earmark"></i>
+                                </button>
                             </td>
                         </tr>
+                        @if (expandedTaskId == task.TaskId)
+                        {
+                            <tr>
+                                <td colspan="6">
+                                    <div class="border rounded p-3 bg-light-subtle">
+                                        <h6>Task Documents</h6>
+                                        <DocumentUploadPanel CurrentUserId="currentUserId" CurrentDepartment="currentDepartment" ProjectId="task.ProjectId" TaskId="task.TaskId" OnUploadCompleted="() => ReloadTaskDocumentsAsync(task.TaskId)" />
+                                        <DocumentTable Documents="GetTaskDocuments(task.TaskId)" />
+                                    </div>
+                                </td>
+                            </tr>
+                        }
                     }
                 </tbody>
             </table>
@@ -140,6 +156,9 @@
     private string filterStatus = "";
     private string filterPriority = "";
     private int currentUserId = 0;
+    private string? currentDepartment;
+    private int? expandedTaskId;
+    private readonly Dictionary<int, IReadOnlyList<DocumentListItem>> taskDocuments = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -151,6 +170,8 @@
         {
             currentUserId = userId;
         }
+
+        currentDepartment = user.FindFirst("department")?.Value;
 
         if (currentUserId > 0)
         {
@@ -188,6 +209,31 @@
     private void ViewTaskDetails(int taskId)
     {
         // TODO: Navigate to task details or show modal
+    }
+
+    private async Task ToggleTaskDocumentsAsync(int taskId)
+    {
+        if (expandedTaskId == taskId)
+        {
+            expandedTaskId = null;
+            return;
+        }
+
+        expandedTaskId = taskId;
+        await ReloadTaskDocumentsAsync(taskId);
+    }
+
+    private async Task ReloadTaskDocumentsAsync(int taskId)
+    {
+        taskDocuments[taskId] = await DocumentService.GetTaskDocumentsAsync(taskId, currentUserId, currentDepartment);
+        StateHasChanged();
+    }
+
+    private IReadOnlyList<DocumentListItem> GetTaskDocuments(int taskId)
+    {
+        return taskDocuments.TryGetValue(taskId, out var documents)
+            ? documents
+            : Array.Empty<DocumentListItem>();
     }
 
     private string GetPriorityColor(TaskPriority priority)

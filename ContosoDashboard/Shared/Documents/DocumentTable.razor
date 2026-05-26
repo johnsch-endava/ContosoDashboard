@@ -1,0 +1,93 @@
+@using ContosoDashboard.Models
+
+@if (Documents is null || !Documents.Any())
+{
+    <div class="alert alert-info">No documents found.</div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Category</th>
+                    <th>Project</th>
+                    <th>Uploaded</th>
+                    <th>Size</th>
+                    <th>Scan</th>
+                    @if (ActionsTemplate is not null)
+                    {
+                        <th>Actions</th>
+                    }
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var document in Documents)
+                {
+                    <tr>
+                        <td>
+                            <strong>@document.Title</strong><br />
+                            <small class="text-muted">@document.OriginalFileName</small>
+                            @if (document.Tags.Any())
+                            {
+                                <div class="mt-1">
+                                    @foreach (var tag in document.Tags)
+                                    {
+                                        <span class="badge bg-light text-dark me-1">@tag</span>
+                                    }
+                                </div>
+                            }
+                        </td>
+                        <td>@document.Category</td>
+                        <td>@(document.ProjectName ?? "-")</td>
+                        <td>@document.CreatedUtc.ToString("MMM dd, yyyy")<br /><small class="text-muted">@document.UploadedByDisplayName</small></td>
+                        <td>@FormatFileSize(document.FileSizeBytes)</td>
+                        <td>
+                            <span class="badge bg-@GetScanStatusColor(document.ScanStatus)">@document.ScanStatus</span>
+                        </td>
+                        @if (ActionsTemplate is not null)
+                        {
+                            <td>@ActionsTemplate(document)</td>
+                        }
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public IReadOnlyList<DocumentListItem> Documents { get; set; } = Array.Empty<DocumentListItem>();
+
+    [Parameter]
+    public RenderFragment<DocumentListItem>? ActionsTemplate { get; set; }
+
+    private static string FormatFileSize(long fileSize)
+    {
+        if (fileSize < 1024)
+        {
+            return $"{fileSize} B";
+        }
+
+        if (fileSize < 1024 * 1024)
+        {
+            return $"{fileSize / 1024d:F1} KB";
+        }
+
+        return $"{fileSize / 1024d / 1024d:F1} MB";
+    }
+
+    private static string GetScanStatusColor(DocumentScanStatus status)
+    {
+        return status switch
+        {
+            DocumentScanStatus.Passed => "success",
+            DocumentScanStatus.Pending => "warning",
+            DocumentScanStatus.Quarantined => "danger",
+            DocumentScanStatus.Failed => "danger",
+            _ => "secondary"
+        };
+    }
+}

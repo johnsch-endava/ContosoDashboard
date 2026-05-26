@@ -105,11 +105,13 @@ This training application follows an **offline-first architecture** with abstrac
 - **Database**: SQLite file database (`ContosoDashboard.db`) for offline local development
 - **File Storage**: Local filesystem for any file-based features
 - **Authentication**: Cookie-based mock authentication
+- **File Screening**: Validation-based screening inside the web app with no required cloud dependencies
 
 **Production Migration Path:**
 - **Database**: SQL Server or Azure SQL Database (set `ConnectionStrings:SqlServerConnection` outside development)
 - **File Storage**: Azure Blob Storage (swap `IFileStorageService` implementation)
 - **Authentication**: Microsoft Entra ID (replace authentication middleware)
+- **Async File Scanning**: Azure Queue Storage plus an Azure Functions queue-triggered worker
 
 **Key Design Pattern - Infrastructure Abstraction:**
 
@@ -135,6 +137,24 @@ public interface IFileStorageService
 - Migration to production requires only configuration and implementation swaps
 - Business logic remains unchanged during cloud migration
 - Demonstrates industry-standard separation of concerns
+
+### Document Storage and Scan Worker Configuration
+
+Document uploads use the `DocumentStorage` section in `ContosoDashboard/appsettings.json`.
+The training default stores files under `ContosoDashboard/ContosoDashboard/AppData/uploads`,
+enforces a 25 MB limit, and validates a configured extension/MIME allow-list before a
+document becomes available.
+
+`DocumentScanning` keeps the local training mode on `OfflineValidation`, which means the
+web app performs the screening decision inline without Azure resources. For cloud-backed
+deployments, set `DocumentScanning:EnableQueueDispatch` to `true` and supply
+`DocumentScanQueue` settings so the app can publish post-upload scan jobs to Azure Queue
+Storage.
+
+The optional worker scaffold lives under `ContosoDashboard/DocumentScanWorker` and is
+designed for an Azure Functions queue-triggered implementation. The checked-in
+`local.settings.json.example` shows the expected configuration keys, while the real
+`local.settings.json` stays ignored.
 
 **File upload best practice:** When implementing file uploads, generate unique file paths (using GUID) before database insertion to prevent duplicate key violations and orphaned records.
 

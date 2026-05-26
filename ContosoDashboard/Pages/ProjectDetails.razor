@@ -5,6 +5,7 @@
 @using System.Security.Claims
 @attribute [Authorize]
 @inject IProjectService ProjectService
+@inject IDocumentService DocumentService
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthenticationStateProvider
 
@@ -151,6 +152,16 @@
                         }
                     </div>
                 </div>
+
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Project Documents</h5>
+                    </div>
+                    <div class="card-body">
+                        <DocumentUploadPanel CurrentUserId="currentUserId" CurrentDepartment="currentDepartment" ProjectId="ProjectId" OnUploadCompleted="ReloadDocumentsAsync" />
+                        <DocumentTable Documents="projectDocuments" />
+                    </div>
+                </div>
             </div>
 
             <div class="col-md-4">
@@ -237,7 +248,9 @@
     public int ProjectId { get; set; }
 
     private Project? project;
+    private IReadOnlyList<DocumentListItem> projectDocuments = Array.Empty<DocumentListItem>();
     private int currentUserId = 0;
+    private string? currentDepartment;
 
     protected override async Task OnInitializedAsync()
     {
@@ -250,9 +263,12 @@
             currentUserId = userId;
         }
 
+        currentDepartment = user.FindFirst("department")?.Value;
+
         if (currentUserId > 0)
         {
             project = await ProjectService.GetProjectByIdAsync(ProjectId, currentUserId);
+            projectDocuments = await DocumentService.GetProjectDocumentsAsync(ProjectId, currentUserId, currentDepartment);
         }
         
         if (project == null)
@@ -304,5 +320,10 @@
             return $"{names[0][0]}{names[1][0]}".ToUpper();
         }
         return displayName.Length > 0 ? displayName[0].ToString().ToUpper() : "?";
+    }
+
+    private async Task ReloadDocumentsAsync()
+    {
+        projectDocuments = await DocumentService.GetProjectDocumentsAsync(ProjectId, currentUserId, currentDepartment);
     }
 }

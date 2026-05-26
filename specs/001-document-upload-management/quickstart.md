@@ -22,12 +22,21 @@ Open `http://localhost:5000` and sign in through the mock login page.
 - On WSL/Linux development hosts, keep using the `http` launch profile unless you explicitly want to configure local certificate trust for HTTPS.
 - Keep document storage paths relative and built with `Path.Combine(...)`; do not hard-code Windows or Unix separators.
 
+## Document storage and scan worker setup
+
+- The training default writes uploaded files to `ContosoDashboard/ContosoDashboard/AppData/uploads`.
+- `DocumentScanning:Mode` should remain `OfflineValidation` for local/offline use.
+- `DocumentScanning:EnableQueueDispatch` should stay `false` unless you are wiring the optional Azure Queue Storage plus Azure Functions scan pipeline.
+- The optional Azure Functions scaffold is under `ContosoDashboard/DocumentScanWorker`.
+- Copy `ContosoDashboard/DocumentScanWorker/local.settings.json.example` to `local.settings.json` only when running the queue-triggered worker locally.
+
 ## Reset the training environment
 
 Delete these local artifacts if you need a clean dataset before rerunning the scenarios:
 
 - `ContosoDashboard/ContosoDashboard/ContosoDashboard.db`
 - `ContosoDashboard/ContosoDashboard/AppData/uploads/`
+- `ContosoDashboard/DocumentScanWorker/local.settings.json`
 
 Then rerun the build and application commands above.
 

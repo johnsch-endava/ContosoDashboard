@@ -1,0 +1,275 @@
+@page "/documents"
+@using ContosoDashboard.Models
+@using ContosoDashboard.Services
+@using Microsoft.AspNetCore.Authorization
+@using System.Security.Claims
+@attribute [Authorize]
+@inject IDocumentService DocumentService
+@inject IUserService UserService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<PageTitle>Documents - ContosoDashboard</PageTitle>
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <h1>Documents</h1>
+            <p class="text-muted">Upload, browse, and manage your documents.</p>
+        </div>
+    </div>
+
+    <div class="btn-group mb-4" role="group">
+        <button class="btn @(currentScope == "my" ? "btn-primary" : "btn-outline-primary")" @onclick="SwitchToMyDocumentsAsync">My Documents</button>
+        <button class="btn @(currentScope == "shared" ? "btn-primary" : "btn-outline-primary")" @onclick="SwitchToSharedDocumentsAsync">Shared with Me</button>
+        <button class="btn @(currentScope == "accessible" ? "btn-primary" : "btn-outline-primary")" @onclick="SwitchToAccessibleDocumentsAsync">All Accessible</button>
+    </div>
+
+    @if (currentScope == "my")
+    {
+        <DocumentUploadPanel CurrentUserId="currentUserId" CurrentDepartment="currentDepartment" OnUploadCompleted="LoadDocumentsAsync" />
+    }
+
+    @if (editingDocument is not null)
+    {
+        <DocumentEditForm Document="editingDocument" OnSave="HandleEditSaveAsync" OnCancel="ClosePanels" />
+    }
+
+    @if (shareDocument is not null)
+    {
+        <DocumentShareDialog Document="shareDocument" Users="shareableUsers" OnShare="HandleShareAsync" OnCancel="ClosePanels" />
+    }
+
+    @if (replaceDocument is not null)
+    {
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Replace @replaceDocument.Title</h5>
+                <button class="btn btn-sm btn-outline-secondary" @onclick="ClosePanels">Close</button>
+            </div>
+            <div class="card-body">
+                <InputFile OnChange="HandleReplaceFileSelected" class="form-control mb-3" />
+                @if (!string.IsNullOrWhiteSpace(replaceStatusMessage))
+                {
+                    <div class="alert alert-info">@replaceStatusMessage</div>
+                }
+                <button class="btn btn-warning" @onclick="ReplaceDocumentAsync" disabled="@(replaceFile is null)">Upload Replacement</button>
+            </div>
+        </div>
+    }
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label">Search</label>
+                    <input class="form-control" @bind="searchTerm" placeholder="title, description, tags, uploader, project" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Category</label>
+                    <select class="form-select" @bind="selectedCategory">
+                        <option value="">All</option>
+                        <option value="Project Documents">Project Documents</option>
+                        <option value="Team Resources">Team Resources</option>
+                        <option value="Personal Files">Personal Files</option>
+                        <option value="Reports">Reports</option>
+                        <option value="Presentations">Presentations</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Sort By</label>
+                    <select class="form-select" @bind="sortBy">
+                        <option value="uploadDate">Upload Date</option>
+                        <option value="title">Title</option>
+                        <option value="category">Category</option>
+                        <option value="fileSize">File Size</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button class="btn btn-secondary w-100" @onclick="LoadDocumentsAsync">Apply</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(pageStatusMessage))
+    {
+        <div class="alert alert-info">@pageStatusMessage</div>
+    }
+
+    <DocumentTable Documents="documents" ActionsTemplate="DocumentActions" />
+</div>
+
+@code {
+    private IReadOnlyList<DocumentListItem> documents = Array.Empty<DocumentListItem>();
+    private IReadOnlyList<User> shareableUsers = Array.Empty<User>();
+    private DocumentDetailsResponse? editingDocument;
+    private DocumentListItem? shareDocument;
+    private DocumentListItem? replaceDocument;
+    private IBrowserFile? replaceFile;
+    private string? replaceStatusMessage;
+    private string? pageStatusMessage;
+    private string currentScope = "my";
+    private string searchTerm = string.Empty;
+    private string selectedCategory = string.Empty;
+    private string sortBy = "uploadDate";
+    private int currentUserId;
+    private string? currentDepartment;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCurrentUserAsync();
+        shareableUsers = (await UserService.GetAllUsersAsync()).Where(user => user.UserId != currentUserId).ToList();
+        await LoadDocumentsAsync();
+    }
+
+    private RenderFragment<DocumentListItem> DocumentActions => document => @<DocumentActionBar Document="document" OnEdit="HandleEditAsync" OnReplace="HandleReplaceAsync" OnShare="HandleSharePanelAsync" OnDelete="HandleDeleteAsync" />;
+
+    private async Task LoadCurrentUserAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
+        if (userIdClaim is not null && int.TryParse(userIdClaim.Value, out var parsedUserId))
+        {
+            currentUserId = parsedUserId;
+        }
+
+        currentDepartment = user.FindFirst("department")?.Value;
+    }
+
+    private async Task LoadDocumentsAsync()
+    {
+        pageStatusMessage = null;
+        var response = await DocumentService.GetDocumentsAsync(currentUserId, currentDepartment, new DocumentQueryRequest
+        {
+            Scope = currentScope,
+            Category = selectedCategory,
+            Search = searchTerm,
+            Sort = sortBy,
+            Direction = "desc"
+        });
+
+        documents = response.Items;
+    }
+
+    private async Task SwitchScopeAsync(string scope)
+    {
+        currentScope = scope;
+        ClosePanels();
+        await LoadDocumentsAsync();
+    }
+
+    private Task SwitchToMyDocumentsAsync() => SwitchScopeAsync("my");
+
+    private Task SwitchToSharedDocumentsAsync() => SwitchScopeAsync("shared");
+
+    private Task SwitchToAccessibleDocumentsAsync() => SwitchScopeAsync("accessible");
+
+    private async Task HandleEditAsync(int documentId)
+    {
+        ClosePanels();
+        editingDocument = await DocumentService.GetDocumentByIdAsync(documentId, currentUserId, currentDepartment);
+    }
+
+    private async Task HandleEditSaveAsync(DocumentUpdateRequest request)
+    {
+        if (editingDocument is null)
+        {
+            return;
+        }
+
+        await DocumentService.UpdateDocumentAsync(editingDocument.DocumentId, request, currentUserId, currentDepartment);
+        ClosePanels();
+        await LoadDocumentsAsync();
+    }
+
+    private void HandleReplaceAsync(int documentId)
+    {
+        ClosePanels();
+        replaceDocument = documents.FirstOrDefault(document => document.DocumentId == documentId);
+        replaceStatusMessage = null;
+        replaceFile = null;
+    }
+
+    private void HandleReplaceFileSelected(InputFileChangeEventArgs args)
+    {
+        replaceFile = args.File;
+        replaceStatusMessage = replaceFile is null ? null : $"Selected {replaceFile.Name}";
+    }
+
+    private async Task ReplaceDocumentAsync()
+    {
+        if (replaceDocument is null || replaceFile is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await using var browserStream = replaceFile.OpenReadStream(26214400);
+            using var memoryStream = new MemoryStream();
+            await browserStream.CopyToAsync(memoryStream);
+            memoryStream.Position = 0;
+
+            await DocumentService.ReplaceDocumentAsync(replaceDocument.DocumentId, new DocumentUploadRequest
+            {
+                Title = replaceDocument.Title,
+                Category = replaceDocument.Category,
+                FileName = replaceFile.Name,
+                ContentType = replaceFile.ContentType,
+                FileSizeBytes = replaceFile.Size,
+                FileContent = memoryStream
+            }, currentUserId, currentDepartment);
+
+            replaceStatusMessage = "Replacement uploaded successfully.";
+            await LoadDocumentsAsync();
+        }
+        catch (Exception exception)
+        {
+            replaceStatusMessage = exception.Message;
+        }
+    }
+
+    private void HandleSharePanelAsync(int documentId)
+    {
+        ClosePanels();
+        shareDocument = documents.FirstOrDefault(document => document.DocumentId == documentId);
+    }
+
+    private async Task HandleShareAsync(DocumentShareRequest request)
+    {
+        if (shareDocument is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await DocumentService.ShareDocumentAsync(shareDocument.DocumentId, request, currentUserId, currentDepartment);
+            pageStatusMessage = "Document shared successfully.";
+            ClosePanels();
+            await LoadDocumentsAsync();
+        }
+        catch (Exception exception)
+        {
+            pageStatusMessage = exception.Message;
+        }
+    }
+
+    private async Task HandleDeleteAsync(int documentId)
+    {
+        var deleted = await DocumentService.DeleteDocumentAsync(documentId, currentUserId, currentDepartment);
+        pageStatusMessage = deleted ? "Document deleted." : "You are not authorized to delete that document.";
+        await LoadDocumentsAsync();
+    }
+
+    private void ClosePanels()
+    {
+        editingDocument = null;
+        shareDocument = null;
+        replaceDocument = null;
+        replaceFile = null;
+        replaceStatusMessage = null;
+    }
+}
